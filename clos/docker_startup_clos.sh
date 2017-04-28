@@ -11,6 +11,10 @@ set -o pipefail
 # Uninitalized variables' use should cause errors
 set -u
 
+#
+# Create the /var/run/netns for the further trickery with 'ip netns'
+#
+sudo mkdir -p /var/run/netns
 # Initial variables
 self=$0
 cores=2
