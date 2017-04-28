@@ -9,7 +9,7 @@
 IFS=","
 echo "BGPGlobal settings"
 cat containers.lst | while read cid name ns ip; do
-  echo "fluffy.py --host $ip BGPGlobal config PATCH --json_blob '{\"ASNum\":\"$ns\",\"RouterID\":$ns}'"
+  echo "fluffy.py --host $ip BGPGlobal config PATCH --json_blob '{\"ASNum\":\"$ns\",\"RouterId\":$ns, \"Disabled\":\"false\"}'"
 done
 
 echo "LLDPGlobal settings"
