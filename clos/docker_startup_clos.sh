@@ -362,6 +362,8 @@ group1_leaves="1 2 3 4"
 group2_spines="3 4"
 group2_leaves="5 6 7 8"
 
+leaf_groups=$spine_groups
+
 # Commented out as a starting point for doing algorithmic splitting of spines
 # into groups
 #keys=(${!a_spines[@]})
