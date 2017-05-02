@@ -5,7 +5,7 @@ emulating a Clos-like network
 
 ## Scripts
 
-1. docker_start_clos.sh
+### docker_start_clos.sh
 ```NOTE:  This version does not, yet, do anything with most of these. Sorry about that.
 
 Help documentation for test/clos/docker_startup_clos.sh.
