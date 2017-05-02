@@ -9,7 +9,9 @@
 # A command failing during a pipe will cause the whole pile to fail.
 set -o pipefail
 # Uninitalized variables' use should cause errors
-set -u
+# Use of associative arrays seems incompatible with this setting. Disabling.
+
+#set -u
 
 #
 # Create the /var/run/netns for the further trickery with 'ip netns'
@@ -27,6 +29,8 @@ dry_run=0
 declare -A a_cores
 declare -A a_spines
 declare -A a_leaves
+declare -A a_spine_groups
+declare -A a_leaf_groups
 container_record="containers.lst"
 netlinks="netlinks"
 
@@ -67,15 +71,15 @@ while getopts "$optspec" optchar; do
       echo "${REV}Cores${NORM} set to: ${BOLD}$cores${NORM}" >&2
       ;;
     l)
-      #spines=$OPTARG
+      spines=$OPTARG
       echo "${REV}Spines${NORM} set to: ${BOLD}$spines${NORM}" >&2
       ;;
     g)
-      #spine_groups=$OPTARG
+      spine_groups=$OPTARG
       echo "${REV}Spine Groups${NORM} set to: ${BOLD}$spine_groups${NORM}" >&2
       ;;
     t)
-      #leaf=$OPTARG
+      leaf=$OPTARG
       echo "${REV}Leaves${NORM} set to ${BOLD}$leaf${NORM}" >&2
       ;;
     z)
@@ -357,12 +361,80 @@ done #
 #
 # Walk the spines and put things into groups
 #
-group1_spines="1 2"
-group1_leaves="1 2 3 4"
-group2_spines="3 4"
-group2_leaves="5 6 7 8"
+#group1_spines="1 2"
+#group1_leaves="1 2 3 4"
+#group2_spines="3 4"
+#group2_leaves="5 6 7 8"
 
 leaf_groups=$spine_groups
+
+# Split spines into groups
+echo "Splitting spines into groups:"
+divisible=$(echo "$spines % $spine_groups" | bc)
+if [ $divisible -eq 0 ]; then
+  echo "$spines splits neatly into $spine_groups"
+else
+  echo "NOTE: Spine groups will be uneven."
+  echo "All overflow will be placed into last group"
+fi
+spines_per_group=$(echo "$spines / $spine_groups" | bc)
+#
+# There will be at least one group.
+#
+group=1
+echo "Spines per group: $spines_per_group"
+for ((i=1; i<=$spines; i++)); do
+  div=$(echo "$i / $spines_per_group"|bc)
+  mod=$(echo "$i % $spines_per_group"|bc)
+  if [ $spine_groups -gt $group ]; then
+    if [ $mod -eq 0 ]; then
+      group=$div
+    else
+      group=$(echo "$div + 1"|bc)
+    fi
+  fi
+  a_spine_groups[$group]="${a_spine_groups[$group]} $i"
+  echo "Spine$i is in group $group"
+  #echo "Group membership of group ${group} is now: ${a_spine_groups[$group]}"
+  #if [ $(echo "$i % $spines_per_group" | bc) -eq 0 ]; then
+  #  echo ""
+  #fi
+done
+
+echo
+
+echo "Splitting leaves into groups:"
+# Split leaves into groups
+divisible=$(echo "$leaf % $leaf_groups" | bc)
+if [ $divisible -eq 0 ]; then
+  echo "$leaf splits neatly into $leaf_groups"
+else
+  echo "NOTE: Leaf groups will be uneven."
+  echo "All overflow will be placed into last group"
+fi
+leaves_per_group=$(echo "$leaf / $leaf_groups" | bc)
+#
+# There will be at least one group.
+#
+group=1
+echo "Leaves per group: $leaves_per_group"
+for ((i=1; i<=$leaf; i++)); do
+  div=$(echo "$i / $leaves_per_group"|bc)
+  mod=$(echo "$i % $leaves_per_group"|bc)
+  if [ $leaf_groups -gt $group ]; then
+    if [ $mod -eq 0 ]; then
+      group=$div
+    else
+      group=$(echo "$div + 1"|bc)
+    fi
+  fi
+  a_leaf_groups[$group]="${a_leaf_groups[$group]} $i"
+  echo "Leaf$i is in group $group"
+  #echo "Group membership of group ${group} is now: ${a_leaf_groups[$group]}"
+  #if [ $(echo "$i % $leaves_per_group" | bc) -eq 0 ]; then
+  #  echo ""
+  #fi
+done
 
 # Commented out as a starting point for doing algorithmic splitting of spines
 # into groups
@@ -372,36 +444,41 @@ leaf_groups=$spine_groups
 #  group=$(echo "scale=0;$index/$spine_groups+1"|bc)
 #  echo $key -- ${a_spines[$key]} $group
 #done
+
 echo "Processing Spine/Leaf groups:"
 if [ $dry_run -eq 1 ]; then
   echo "${REV}DRY-RUN${NORM}"
+  group_keys=(${!a_spine_groups[@]})
+  for (( index=0; $index < ${#a_spine_groups[@]}; index+=1 )); do
+    group_key=${group_keys[$index]}
+    echo -e "\tSpineGroup $index (${a_spine_groups[$group_key]})" 
+    echo -e "\tLeafGroup $index (${a_leaf_groups[$group_key]})" 
+    for leaf in ${a_leaf_groups[$group_key]}; do
+      for spine in ${a_spine_groups[$group_key]}; do
+        spine_namespace=${a_spines[spine$spine]}
+        leaf_namespace=${a_leaves[leaf$leaf]}
+        #echo "Leaf ${a_leaves[leaf$leaf]} -> Spine ${a_spines[spine$spine]}"
+        echo -e "\tSpine (spine$spine, namespace:$spine_namespace) -> Leaf (leaf$leaf, namespace: $leaf_namespace)"
+        echo "${REV}DRY-RUN:${NORM} make_veth $leaf_namespace $spine_namespace"
+      done # for spine in ${a_spine_groups[$group_key]}
+    done # for leaf in ${a_leaf_groups[$group_key]}
+  done # for (( index=0; $index < ${#a_spine_groups[@]}; index+=1 ))
 else
-  echo "Group 1:"
-  for leaf in $group1_leaves; do
-    for spine in $group1_spines; do
-      spine_namespace=${a_spines[spine$spine]}
-      leaf_namespace=${a_leaves[leaf$leaf]}
-      #echo "Leaf ${a_leaves[leaf$leaf]} -> Spine ${a_spines[spine$spine]}"
-      echo -e "\tSpine (spine$spine, namespace:$spine_namespace) -> Leaf (leaf$leaf, namespace: $leaf_namespace)"
-      make_veth $leaf_namespace $spine_namespace
-    done
-  done
-fi # if [ $dry_run -eq 1 ]
-
-echo "Group 2:"
-if [ $dry_run -eq 1 ]; then
-  echo "${REV}DRY-RUN${NORM}"
-else
-  for leaf in $group2_leaves; do
-    for spine in $group2_spines; do
-      spine_namespace=${a_spines[spine$spine]}
-      leaf_namespace=${a_leaves[leaf$leaf]}
-      #echo "Leaf ${a_leaves[leaf$leaf]} -> Spine ${a_spines[spine$spine]}"
-      echo -e "\tSpine (spine$spine, namespace:$spine_namespace) -> Leaf (leaf$leaf, namespace: $leaf_namespace)"
-      make_veth $leaf_namespace $spine_namespace
-      echo
-    done
-  done
+  group_keys=(${!a_spine_groups[@]})
+  for (( index=0; $index < ${#a_spine_groups[@]}; index+=1 )); do
+    group_key=${group_keys[$index]}
+    echo -e "\tSpineGroup $index (${a_spine_groups[$group_key]})" 
+    echo -e "\tLeafGroup $index (${a_leaf_groups[$group_key]})" 
+    for leaf in ${a_leaf_groups[$group_key]}; do
+      for spine in ${a_spine_groups[$group_key]}; do
+        spine_namespace=${a_spines[spine$spine]}
+        leaf_namespace=${a_leaves[leaf$leaf]}
+        #echo "Leaf ${a_leaves[leaf$leaf]} -> Spine ${a_spines[spine$spine]}"
+        echo -e "\tSpine (spine$spine, namespace:$spine_namespace) -> Leaf (leaf$leaf, namespace: $leaf_namespace)"
+        make_veth $leaf_namespace $spine_namespace
+      done # for spine in ${a_spine_groups[$group_key]}
+    done # for leaf in ${a_leaf_groups[$group_key]}
+  done # for (( index=0; $index < ${#a_spine_groups[@]}; index+=1 ))
 fi # if [ $dry_run -eq 1 ]
 
 echo -e "Start flexswtich to pick up the interfaces "
