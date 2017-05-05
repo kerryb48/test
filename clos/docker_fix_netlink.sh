@@ -9,7 +9,7 @@ dest_namespace=$(sudo docker inspect -f '{{.State.Pid}}' $3)
 dest_int=$4
 echo "Trying to fix veth netlinks between $1:$2 and $3:$4"
 
-# NOTE: 
+# NOTE:
 # The check fails due to permissions on /var/run/netns unless this script is
 # run as root
 if [ ! -e /var/run/netns/$src_namespace ]; then

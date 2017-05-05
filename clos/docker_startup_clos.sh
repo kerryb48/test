@@ -5,7 +5,7 @@
 
 #
 # Lets be pessimistic
-# 
+#
 # A command failing during a pipe will cause the whole pile to fail.
 set -o pipefail
 # Uninitalized variables' use should cause errors
@@ -310,7 +310,7 @@ echo "All cores and spines:"
 
 function next_int {
   namespace=$1
-  lastint=$(sudo ip -o -n $namespace link | grep -vE "lo: |ethSRC|ethDEST" | grep "eth" |awk '{print $2}'|awk -F "@" '{print $1}'|sort|tail -1|sed 's/eth//')
+  lastint=$(sudo ip -o -n $namespace link | grep "fpPanel" |awk '{print $2}'|awk -F "@" '{print $1}'|sort|tail -1|sed 's/fpPanel//')
   let nextint=lastint+1
   echo $nextint
 }
@@ -329,15 +329,15 @@ function make_veth {
   sudo ip link set ethDEST netns $dest_namespace
   src_int=$(next_int $src_namespace)
   dest_int=$(next_int $dest_namespace)
-  echo -e "\t\tRenaming ethSRC to eth$src_int"
-  sudo ip -n $src_namespace link set ethSRC name eth$src_int
-  echo -e "\t\tRenaming ethDEST to eth$dest_int"
-  sudo ip -n $dest_namespace link set ethDEST name eth$dest_int
-  echo -e "\t\tBringing up SOURCE eth$src_int"
-  sudo ip -n $src_namespace link set eth$src_int up
-  echo -e "\t\tBringing up DEST eth$dest_int"
-  sudo ip -n $dest_namespace link set eth$dest_int up
-  echo "$src_namespace,eth$src_int,$dest_namespace,eth$dest_int" >> $netlinks
+  echo -e "\t\tRenaming ethSRC to fpPanel$src_int"
+  sudo ip -n $src_namespace link set ethSRC name fpPanel$src_int
+  echo -e "\t\tRenaming ethDEST to fpPanel$dest_int"
+  sudo ip -n $dest_namespace link set ethDEST name fpPanel$dest_int
+  echo -e "\t\tBringing up SOURCE fpPanel$src_int"
+  sudo ip -n $src_namespace link set fpPanel$src_int up
+  echo -e "\t\tBringing up DEST fpPanel$dest_int"
+  sudo ip -n $dest_namespace link set fpPanel$dest_int up
+  echo "$src_namespace,fpPanel$src_int,$dest_namespace,fpPanel$dest_int" >> $netlinks
 }
 
 for spine_key in "${!a_spines[@]}"; do
@@ -355,7 +355,7 @@ for spine_key in "${!a_spines[@]}"; do
 #    for key in "${!a_leaves[@]}"; do
 #      echo -e "\t\tLeaf: \"$key\", namespace: \"${a_leaves[$key]}\"";
 #    done
-  done # 
+  done #
 done #
 
 #
