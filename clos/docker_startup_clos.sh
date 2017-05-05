@@ -310,7 +310,7 @@ echo "All cores and spines:"
 
 function next_int {
   namespace=$1
-  lastint=$(sudo ip -o -n $namespace link | grep "fpPanel" |awk '{print $2}'|awk -F "@" '{print $1}'|sort|tail -1|sed 's/fpPanel//')
+  lastint=$(sudo ip -o -n $namespace link | grep "fpPort" |awk '{print $2}'|awk -F "@" '{print $1}'|sort|tail -1|sed 's/fpPort//')
   let nextint=lastint+1
   echo $nextint
 }
@@ -329,15 +329,15 @@ function make_veth {
   sudo ip link set ethDEST netns $dest_namespace
   src_int=$(next_int $src_namespace)
   dest_int=$(next_int $dest_namespace)
-  echo -e "\t\tRenaming ethSRC to fpPanel$src_int"
-  sudo ip -n $src_namespace link set ethSRC name fpPanel$src_int
-  echo -e "\t\tRenaming ethDEST to fpPanel$dest_int"
-  sudo ip -n $dest_namespace link set ethDEST name fpPanel$dest_int
-  echo -e "\t\tBringing up SOURCE fpPanel$src_int"
-  sudo ip -n $src_namespace link set fpPanel$src_int up
-  echo -e "\t\tBringing up DEST fpPanel$dest_int"
-  sudo ip -n $dest_namespace link set fpPanel$dest_int up
-  echo "$src_namespace,fpPanel$src_int,$dest_namespace,fpPanel$dest_int" >> $netlinks
+  echo -e "\t\tRenaming ethSRC to fpPort$src_int"
+  sudo ip -n $src_namespace link set ethSRC name fpPort$src_int
+  echo -e "\t\tRenaming ethDEST to fpPort$dest_int"
+  sudo ip -n $dest_namespace link set ethDEST name fpPort$dest_int
+  echo -e "\t\tBringing up SOURCE fpPort$src_int"
+  sudo ip -n $src_namespace link set fpPort$src_int up
+  echo -e "\t\tBringing up DEST fpPort$dest_int"
+  sudo ip -n $dest_namespace link set fpPort$dest_int up
+  echo "$src_namespace,fpPort$src_int,$dest_namespace,fpPort$dest_int" >> $netlinks
 }
 
 for spine_key in "${!a_spines[@]}"; do
