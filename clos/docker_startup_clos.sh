@@ -66,7 +66,7 @@ optspec=":s:l:t:z:g:f:hd"
 while getopts "$optspec" optchar; do
   case $optchar in
     s)
-      #cores=$OPTARG
+      cores=$OPTARG
       echo "${REV}Cores${NORM} set to: ${BOLD}$cores${NORM}" >&2
       ;;
     l)
