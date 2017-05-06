@@ -43,7 +43,6 @@ YELLOW=$(tput setaf 3)
 
 #Help function
 function display_help {
-  echo -e "${YELLOW}NOTE: ${NORM} This version does not, yet, do anything with most of these. Sorry about that."
   echo -e \\n"Help documentation for ${BOLD}${self}.${NORM}"\\n
   echo "Command line switches are optional. The following switches are recognized."
   echo "${REV}-s${NORM} Specifies the number of ${BOLD}core${NORM}. Default is ${BOLD}$cores${NORM}."
