@@ -13,6 +13,6 @@ cat $1 | sed 's/,/ /g' | while read srcinst srcnic dstinst dstnic; do
     echo "Link OK"
   else
     echo "Link NOT OK"
-    echo "Try running \"docker_fix_netlink.sh $srcinst $srcnic $dstinst $dstnic\" to fix"
+    echo "Try running \"docker_make_netlink.sh $srcinst $srcnic $dstinst $dstnic\" to fix"
   fi
 done
