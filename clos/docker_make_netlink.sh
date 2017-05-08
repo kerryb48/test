@@ -28,7 +28,7 @@ if [ $? -eq 0 ]; then
 fi # if [ $? -ne 0 ]
 echo "Trying to connect VETH netlinks between $1:$2 and $3:$4"
 
-# NOTE:
+# NOTE: 
 # The check fails due to permissions on /var/run/netns unless this script is
 # run as root
 if [ ! -e /var/run/netns/$src_namespace ]; then
