@@ -3,11 +3,30 @@
 set -o pipefail
 set -u
 
+if [ $# -ne 4 ]; then
+  echo "Expected usage: $0 dockerinst1 srcNIC dockerinst2 dstNIC"
+  echo "Example: $0 flexswitch1 fpPort20 flexswitch2 fpPort7"
+  exit 1
+fi
 src_namespace=$(sudo docker inspect -f '{{.State.Pid}}' $1)
 src_int=$2
+# Check to see if the source NIC already exists in the container's namespace
+sudo ip -o -n $src_namespace link | grep -q "$src_int@"
+if [ $? -eq 0 ]; then
+  echo "ERROR: Source container $1 ($src_namespace) already contains $src_int:"
+  sudo ip -o -n $src_namespace link | grep "$src_int@"
+  exit 1
+fi # if [ $? -ne 0 ]
 dest_namespace=$(sudo docker inspect -f '{{.State.Pid}}' $3)
 dest_int=$4
-echo "Trying to fix veth netlinks between $1:$2 and $3:$4"
+# Check to see if the destination NIC already exists in the container's namespace
+sudo ip -o -n $dest_namespace link | grep -q "$dest_int@"
+if [ $? -eq 0 ]; then
+  echo "ERROR: Destination container $1 ($dest_namespace) already contains $dest_int:"
+  sudo ip -o -n $dest_namespace link | grep -q "$dest_int@"
+  exit 1
+fi # if [ $? -ne 0 ]
+echo "Trying to connect VETH netlinks between $1:$2 and $3:$4"
 
 # NOTE:
 # The check fails due to permissions on /var/run/netns unless this script is
