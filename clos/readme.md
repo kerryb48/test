@@ -36,5 +36,5 @@ Example: test/clos/docker_startup_clos.sh -s 2 -l 4 -t 8 -g 2 -z 0
 * Generates a list of all VETHs for the supplied instance names 
    or all, if none supplied.
 * Used by the docker_check_netlinks.sh 
-### docker_fix_netlink.sh
-* Attempts to fix a VETH link pair between named instances. 
+### docker_make_netlink.sh
+* Attempts to make a VETH link pair between named instances. 

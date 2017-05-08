@@ -5,7 +5,7 @@
 
 #
 # Lets be pessimistic
-#
+# 
 # A command failing during a pipe will cause the whole pile to fail.
 set -o pipefail
 # Uninitalized variables' use should cause errors
@@ -309,7 +309,7 @@ echo "All cores and spines:"
 
 function next_int {
   namespace=$1
-  lastint=$(sudo ip -o -n $namespace link | grep "fpPort" |awk '{print $2}'|awk -F "@" '{print $1}'|sort|tail -1|sed 's/fpPort//')
+  lastint=$(sudo ip -o -n $namespace link | grep -vE "lo: |ethSRC|ethDEST" | grep "eth" |awk '{print $2}'|awk -F "@" '{print $1}'|sort|tail -1|sed 's/eth//')
   let nextint=lastint+1
   echo $nextint
 }
@@ -328,15 +328,15 @@ function make_veth {
   sudo ip link set ethDEST netns $dest_namespace
   src_int=$(next_int $src_namespace)
   dest_int=$(next_int $dest_namespace)
-  echo -e "\t\tRenaming ethSRC to fpPort$src_int"
-  sudo ip -n $src_namespace link set ethSRC name fpPort$src_int
-  echo -e "\t\tRenaming ethDEST to fpPort$dest_int"
-  sudo ip -n $dest_namespace link set ethDEST name fpPort$dest_int
-  echo -e "\t\tBringing up SOURCE fpPort$src_int"
-  sudo ip -n $src_namespace link set fpPort$src_int up
-  echo -e "\t\tBringing up DEST fpPort$dest_int"
-  sudo ip -n $dest_namespace link set fpPort$dest_int up
-  echo "$src_namespace,fpPort$src_int,$dest_namespace,fpPort$dest_int" >> $netlinks
+  echo -e "\t\tRenaming ethSRC to eth$src_int"
+  sudo ip -n $src_namespace link set ethSRC name eth$src_int
+  echo -e "\t\tRenaming ethDEST to eth$dest_int"
+  sudo ip -n $dest_namespace link set ethDEST name eth$dest_int
+  echo -e "\t\tBringing up SOURCE eth$src_int"
+  sudo ip -n $src_namespace link set eth$src_int up
+  echo -e "\t\tBringing up DEST eth$dest_int"
+  sudo ip -n $dest_namespace link set eth$dest_int up
+  echo "$src_namespace,eth$src_int,$dest_namespace,eth$dest_int" >> $netlinks
 }
 
 for spine_key in "${!a_spines[@]}"; do
@@ -450,8 +450,8 @@ if [ $dry_run -eq 1 ]; then
   group_keys=(${!a_spine_groups[@]})
   for (( index=0; $index < ${#a_spine_groups[@]}; index+=1 )); do
     group_key=${group_keys[$index]}
-    echo -e "\tSpineGroup $index (${a_spine_groups[$group_key]})" 
-    echo -e "\tLeafGroup $index (${a_leaf_groups[$group_key]})" 
+    echo -e "\tSpineGroup $index (${a_spine_groups[$group_key]})"
+    echo -e "\tLeafGroup $index (${a_leaf_groups[$group_key]})"
     for leaf in ${a_leaf_groups[$group_key]}; do
       for spine in ${a_spine_groups[$group_key]}; do
         spine_namespace=${a_spines[spine$spine]}
@@ -466,8 +466,8 @@ else
   group_keys=(${!a_spine_groups[@]})
   for (( index=0; $index < ${#a_spine_groups[@]}; index+=1 )); do
     group_key=${group_keys[$index]}
-    echo -e "\tSpineGroup $index (${a_spine_groups[$group_key]})" 
-    echo -e "\tLeafGroup $index (${a_leaf_groups[$group_key]})" 
+    echo -e "\tSpineGroup $index (${a_spine_groups[$group_key]})"
+    echo -e "\tLeafGroup $index (${a_leaf_groups[$group_key]})"
     for leaf in ${a_leaf_groups[$group_key]}; do
       for spine in ${a_spine_groups[$group_key]}; do
         spine_namespace=${a_spines[spine$spine]}
@@ -488,7 +488,7 @@ else
     echo "##############################"
     echo "#######\"$instance\" FS restart######"
     echo "##############################"
-    sudo docker exec $instance sh -c "/etc/init.d/flexswitch restart" 
+    sudo docker exec $instance sh -c "/etc/init.d/flexswitch restart"
     if [ $? -ne 0 ]; then
        echo "${RED}ERROR: ${NORM}Starting a flexswitch process in docker instance \"$instance\" failed. Please check output above and fix" 1>&2
        exit 1
@@ -517,8 +517,8 @@ if [ $dry_run -eq 1 ]; then
   echo "${REV}DRY-RUN${NORM}"
 else
   IFS=","
-  cat $container_record | while read cid name namespace ip; do 
-    sed -i "s/$namespace/$name/g" $netlinks 
+  cat $container_record | while read cid name namespace ip; do
+    sed -i "s/$namespace/$name/g" $netlinks
   done
   unset IFS
   sort netlinks
