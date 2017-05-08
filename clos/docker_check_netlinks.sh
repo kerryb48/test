@@ -8,7 +8,7 @@ fi # if [ $# -ne 1 ]
 
 cat $1 | sed 's/,/ /g' | while read srcinst srcnic dstinst dstnic; do
   echo -n "Checking link from $srcinst:$srcnic to $dstinst:$dstnic: "
-  $(~/code/docker_list_veths.sh $srcinst $dstinst|grep "^$srcinst $srcnic"|grep --quiet "$dstinst $dstnic")
+  ./docker_list_veths.sh $srcinst $dstinst|grep "^$srcinst $srcnic"|grep --quiet "$dstinst $dstnic"
   if [ $? -eq 0 ]; then
     echo "Link OK"
   else
