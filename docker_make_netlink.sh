@@ -5,7 +5,7 @@ set -u
 
 if [ $# -ne 4 ]; then
   echo "Expected usage: $0 dockerinst1 srcNIC dockerinst2 dstNIC"
-  echo "Example: $0 flexswitch1 fpPort20 flexswitch2 fpPort7"
+  echo "Example: $0 flexswitch1 eth5 flexswitch2 eth7"
   exit 1
 fi
 src_namespace=$(sudo docker inspect -f '{{.State.Pid}}' $1)
