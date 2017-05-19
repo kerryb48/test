@@ -5,7 +5,7 @@
 
 #
 # Lets be pessimistic
-# 
+#
 # A command failing during a pipe will cause the whole pile to fail.
 set -o pipefail
 # Uninitalized variables' use should cause errors
@@ -83,6 +83,7 @@ while getopts "$optspec" optchar; do
       ;;
     z)
       #hosts=$OPTARG
+      echo -e "${YELLOW}NOTE: ${NORM} This version does not, yet, do anything with hosts containers. Sorry about that."
       echo "${REV}Hosts${NORM} set to ${BOLD}$hosts${NORM}" >&2
       ;;
     f)
@@ -106,6 +107,27 @@ while getopts "$optspec" optchar; do
       ;;
   esac
 done
+function fancy_sleep {
+  # It isn't fun to just sit and watch a prompt during a sleep command
+  # wondering if something's wedged.
+  # So, a bit of a progress display
+  #
+    sleeptime="$1"
+    delay=1
+    spinchars='|/-\*'
+    for ((i=1; i<=$sleeptime; i++)); do
+        temp=${spinchars#?}
+        printf " <%c> $i " "$spinchars"
+        spinchars=$temp${spinchars%"$temp"}
+        sleep $delay
+        tempstring="$(printf " [%c] $i " "$spinchars")"
+        stringlen=${#tempstring}
+        for ((t=1; t<=$stringlen; t++)); do
+          printf "\b"
+        done # for t ((t=1; t<=${#tempstring}; t++))
+    done # for ((i=1; i<=$sleeptime; i++))
+    printf "    \b\b\b\b"
+}
 
 #Check the number of arguments. If none are passed, print help and exit.
 NUMARGS=$#
@@ -119,7 +141,7 @@ if [ -e "$container_record" ]; then
   echo "Cowardly refusing to continue"
   exit 1
 else
-  if [ $dry_run -eq 0 ]; then 
+  if [ $dry_run -eq 0 ]; then
     touch $container_record
   fi # if [ $dry_run -eq 1 ]
   if [ $? -ne 0 ]; then
@@ -129,9 +151,9 @@ else
 fi # if [ -e "$container_record" ]
 
 echo "***** Checkout the flexswitch base image *******"
-if [ $dry_run -eq 1 ]; then 
+if [ $dry_run -eq 1 ]; then
   echo "${REV}DRY-RUN: ${NORM}sudo docker pull snapos/flex:latest"
-else 
+else
   sudo docker pull snapos/flex:latest
   if [ $? -ne 0 ]; then
 	  echo "${RED}ERROR:${NORM} Docker pull failed. Please check output above and fix" 1>&2
@@ -146,12 +168,12 @@ total_containers=$(($fl_containers+$hosts))
 leaves_per_group=$(echo "scale=0;($leaf)/$spine_groups"|bc)
 # Some overall output:
 echo "${BOLD}Work to be peformed:${NORM}"
-echo "${REV}FlexSwitch${NORM} containers: $fl_containers ($cores core, $spines spines in $spine_groups groups, $leaf leaves with $leaves_per_group per spine group)" 
+echo "${REV}FlexSwitch${NORM} containers: $fl_containers ($cores core, $spines spines in $spine_groups groups, $leaf leaves with $leaves_per_group per spine group)"
 echo "${REV}Host${NORM} containers: $hosts"
 echo "${REV}Record${NORM} is being kept in ${BOLD}$container_record${NORM}"
 
 #
-# 
+#
 #
 function docker_start_core {
   if [ ! -z "$1" ]; then
@@ -239,7 +261,7 @@ if [ $cores -ne 0 ]; then
     echo "Core number: $i"
     docker_start_core $i
     if [ $dry_run -eq 1 ]; then
-      echo "${REV}DRY-RUN: ${NORM}"
+      echo "${REV}DRY-RUN: ${NORM} Processing cores ($i)"
     else
       namespace=$(sudo docker inspect -f '{{.State.Pid}}' core$i)
       mgmt_ip=$(sudo docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' core$i)
@@ -256,7 +278,7 @@ if [ $spines -ne 0 ]; then
     echo "Spine number: $i"
     docker_start_spine $i
     if [ $dry_run -eq 1 ]; then
-      echo "${REV}DRY-RUN: ${NORM}"
+      echo "${REV}DRY-RUN: ${NORM} Processing spines ($i)"
     else
       namespace=$(sudo docker inspect -f '{{.State.Pid}}' spine$i)
       mgmt_ip=$(sudo docker inspect -f '{{.NetworkSettings.Networks.bridge.IPAddress}}' spine$i)
@@ -272,7 +294,7 @@ if [ $leaf -ne 0 ]; then
   do
     echo "Leaf number: $i"
     if [ $dry_run -eq 1 ]; then
-      echo "${REV}DRY-RUN: ${NORM}"
+      echo "${REV}DRY-RUN: ${NORM} Processing leaves ($i)"
     else
       docker_start_leaf $i
       namespace=$(sudo docker inspect -f '{{.State.Pid}}' leaf$i)
@@ -480,36 +502,54 @@ else
   done # for (( index=0; $index < ${#a_spine_groups[@]}; index+=1 ))
 fi # if [ $dry_run -eq 1 ]
 
-echo -e "Start flexswtich to pick up the interfaces "
+#
+#
+#
+echo -e "\n\n\n"
+echo "**********************************************************************"
+echo "Sleeping 60s to allow for the initial Docker container init to finish"
+if [ $dry_run -eq 0 ]; then
+  fancy_sleep 60
+fi
+echo "**********************************************************************"
+echo -e "\n\n\n"
+
 if [ $dry_run -eq 1 ]; then
-  echo "${REV}DRY-RUN${NORM}"
+  echo "${REV}DRY-RUN${NORM} Starting flexswitch in the containers (list in '$container_record'):"
 else
-  for instance in $(sudo docker ps | awk '{print $NF}'|grep -v "NAME"); do
-    echo "##############################"
-    echo "#######\"$instance\" FS restart######"
-    echo "##############################"
-    sudo docker exec $instance sh -c "/etc/init.d/flexswitch restart"
+  for instance in $(cat $container_record | awk -F "," '{print $2}'); do
+  echo -e "\t$instance (logs redirect to $instance.log):"
+    sudo docker exec $instance sh -c "/etc/init.d/flexswitch restart" >&2> $instance.log
     if [ $? -ne 0 ]; then
        echo "${RED}ERROR: ${NORM}Starting a flexswitch process in docker instance \"$instance\" failed. Please check output above and fix" 1>&2
        exit 1
     fi # if [ $? -ne 0 ]
-    echo "Sleeping 20s to allow for the FlexSwitch daemons to start"
-    sleep 20
-done
+    echo "Sleeping 20s to allow for the FlexSwitch daemons on instance $instance to start"
+    fancy_sleep 20
+done # for instance in $(cat $container_record | awk -F "," '{print $2}')
 fi # if [ $dry_run -eq 1 ]
 
+echo -e "\n\n\n"
+echo "**********************************************************************"
+echo "Sleeping 20s to allow for the FlexSwitch daemons to fully initialize"
+if [ $dry_run -eq 0 ]; then
+  fancy_sleep 20
+fi
+echo "**********************************************************************"
+echo -e "\n\n\n"
+
+
 if [ $dry_run -eq 1 ]; then
-  echo "Checking on the status of FlexSwitch in docker instance \"$instance\"..."
-  echo "${REV}DRY-RUN${NORM}"
+  echo "${REV}DRY-RUN${NORM}: Checking on the status of FlexSwitch in docker instances ..."
 else
-  for instance in $(sudo docker ps | awk '{print $NF}'|grep -v "NAME"); do
+  for instance in $(cat $container_record | awk -F "," '{print $2}'); do
     echo "Checking on the status of FlexSwitch in docker instance \"$instance\"..."
     sudo docker exec $instance sh -c "/etc/init.d/flexswitch status"
     if [ $? -ne 0 ]; then
        echo "${RED}ERROR: ${NORM}Checking a flexswitch process in docker instance \"$instance\" failed. Please check output above and fix" 1>&2
        exit 1
     fi # if [ $? -ne 0 ]
-  done
+  done # for instance in $(cat $container_record | awk -F "," '{print $2}')
 fi # if [ $dry_run -eq 1 ]
 
 echo "Network Links:"

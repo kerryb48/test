@@ -145,7 +145,7 @@ if [ $dry_run -eq 1 ]; then
 else
   sudo docker pull snapos/flex:latest
   if [ $? -ne 0 ]; then
-	  echo "${RED}ERROR:${NORM} Docker pull failed. Please check output above and fix" 1>&2
+	  echo "${RED}ERROR:${NORM} Docker pull failed. Please check output above and fix" 2>&1
 	  exit 1
   fi # if [ $? -ne 0 ]
 fi
@@ -168,7 +168,7 @@ function docker_start_flexswitch {
     echo -e "\tStarting a docker container type: ${REV}FlexSwitch${NORM}, instance name: ${BOLD}flexswitch$instance${NORM}"
   container_id=$(sudo docker run -dt --log-driver=syslog --privileged --cap-add ALL --hostname=flexswitch$instance --name flexswitch$instance -P snapos/flex:latest)
     if [ $? -ne 0 ]; then
-      echo "${RED}ERROR:${NORM} Failed starting docker instance \"$instance\". Please check output above and fix" 1>&2
+      echo "${RED}ERROR:${NORM} Failed starting docker instance \"$instance\". Please check output above and fix" 2>&1
       exit 1
     else
       echo -n "$container_id," >> $container_record
@@ -190,7 +190,7 @@ function docker_start_host {
     echo -e "${YELLOW}Starting a host container isn't supported yet.${NORM}."
     #container_id=$(sudo docker run -dt --log-driver=syslog --hostname=host$instance --name host$instance -P snapos/flex:latest)
     #if [ $? -ne 0 ]; then
-    #  echo "${RED}ERROR${NORM}Failed starting docker instance \"$instance\". Please check output above and fix" 1>&2
+    #  echo "${RED}ERROR${NORM}Failed starting docker instance \"$instance\". Please check output above and fix" 2>&1
     #  exit 1
     #else
     #  echo -n "$container_id," >> $container_record
@@ -293,9 +293,9 @@ if [ $dry_run -eq 1 ]; then
 else
   for instance in $(cat $container_record | awk -F "," '{print $2}'); do
     echo -e "\t$instance (logs redirect to $instance.log):"
-    sudo docker exec $instance sh -c "/etc/init.d/flexswitch restart" >&2> $instance.log
+    sudo docker exec $instance sh -c "/etc/init.d/flexswitch restart" > $instance.log 2>&1
     if [ $? -ne 0 ]; then
-       echo "${RED}ERROR: ${NORM}Starting flexswitch process in docker instance \"$instance\" failed. Please check output above and fix" 1>&2
+       echo "${RED}ERROR: ${NORM}Starting flexswitch process in docker instance \"$instance\" failed. Please check output above and fix" 2>&1
        exit 1
     fi # if [ $? -ne 0 ]
   done # for instance in $(cat $container_record | awk -F "," '{print $2}')
@@ -313,7 +313,7 @@ if [ $dry_run -eq 0 ]; then
     echo "Checking on the status of FlexSwitch in docker instance \"$instance\"..."
     sudo docker exec $instance sh -c "/etc/init.d/flexswitch status"
     if [ $? -ne 0 ]; then
-       echo "${RED}ERROR: ${NORM}Checking a flexswitch process in docker instance \"$instance\" failed. Please check output above and fix" 1>&2
+       echo "${RED}ERROR: ${NORM}Checking a flexswitch process in docker instance \"$instance\" failed. Please check output above and fix" 2>&1
        exit 1
     fi # if [ $? -ne 0 ]
   done
