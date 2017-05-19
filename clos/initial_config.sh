@@ -60,4 +60,32 @@ sort -t "," -k3 netlinks | while read src srcnic dst dstnic; do
   done
 done
 
+# BGP needs the following pieces in place
+# An Lo0 with a /32 address in place - we need to have *something* to advertise
+# A PolicyCondition describing the IP to be advertised
+# A PolicyStmt referencing the PolicyCondition(s)
+# A PolicyDefition utilizing a PolicyStmt
+# An update to the BGPGlobal setting enable the redistribution of the policy defined by PolicyDefinition
+# Yes, we're quite fond of matryoshka dolls, why do you ask?
+
+echo "Meat and guts of BGP now"
+network=0
+cat $container_record | while read cid name ns ip; do
+  # The echo statements are commented out because they'd make it UnPossible to cleanly copy/paste the config 
+  # run commands. But, left here in the interests of serving as documentation/intent.
+  #echo -e "\tCreating interface Lo0 on $name ($ip)"
+  echo "flex --host $ip LogicalIntf config POST --json_blob '{\"Name\": \"Lo0\", \"Type\": \"Loopback\"}'"
+  #echo -e "\tAssigning 192.168.$network.1/32 to Lo0 on $name ($ip)"
+  echo "flex --host $ip LogicalIntf config POST --json_blob '{\"IntfRef\": \"Lo0\", \"IpAddr\": \"192.168.$network.1/32\"}'"
+  #echo -e "\tCreating a PolicyCondition referencing the 192.168.$network.1/32"
+  echo "flex --host $ip PolicyCondition config POST --json_blob '{\"Name\": \"MatchLoopbackIPv4\", \"ConditionType\": \"MatchDstIpPrefix\", \"Protocol\": \"\", \"IpPrefix\": \"192.168.$network.1/32\", \"MaskLengthRange\": \"exact\"}'"
+  #echo -e "\tCreating a PolicyStmt using the previously-created PolicyCondition"
+  echo "flex --host $ip PolicyStmt config POST --json_blob '{\"SetActions\": null, \"Name\": \"RedistLoopback\", \"MatchConditions\": \"any\", \"Conditions\": [\"MatchLoopbackIPv4\"], \"Action\": \"permit\" }'"
+  #echo -e "\tCreating a PolicyDefinition referencing the PolicyStmt which references the PolicyCondition..."
+  echo "flex --host $ip PolicyDefinition config POST --json_blob '{\"Name\": \"RedistConnect_Policy\", \"Priority\": 1, \"MatchType\": \"any\", \"PolicyType\": \"ALL\", \"StatementList\": [{\"Priority\": 1, \"Statement\": \"RedistLoopback\"}]}'"
+  #echo -e "\tWrapping it all with a pretty bow of adjusting the BGPGlobal object to enable the newly-created policy. Note the PATCH method."
+  echo "flex --host $ip BGPGlobal config PATCH --json_blob '{\"Redistribution\": [{\"Sources\": \"CONNECTED\", \"Policy\": \"RedistConnect_Policy\"}]}'"
+  network=$((network+1))
+done
+
 unset IFS
