@@ -18,7 +18,7 @@ if [ -z $1 ]; then
       ethlink=$(echo $ethtupple | awk -F"@" '{print $2}')
       #echo -e "\teth: $eth, ethlink: $ethlink (ID: $id)"
     # eth0 is a valid NIC, but it is also the default Docker NIC, so it's not likely to be a veth
-    done <<< "$(sudo ip -o -n $inst_namespace link | grep -vE "lo: |eth0@"| sed 's/://g' | awk '{print $1" "$2}')"
+  done <<< "$(sudo ip -o -n $inst_namespace link | grep fpPanel| sed 's/://g' | awk '{print $1" "$2}')"
     #echo ""
   done
 else
@@ -34,7 +34,7 @@ else
       ethlink=$(echo $ethtupple | awk -F"@" '{print $2}')
       #echo -e "\teth: $eth, ethlink: $ethlink (ID: $id)"
     # eth0 is a valid NIC, but it is also the default Docker NIC, so it's not likely to be a veth
-    done <<< "$(sudo ip -o -n $inst_namespace link | grep -vE "lo: |eth0@"| sed 's/://g' | awk '{print $1" "$2}')"
+  done <<< "$(sudo ip -o -n $inst_namespace link | grep fpPanel| sed 's/://g' | awk '{print $1" "$2}')"
     #echo ""
     done # for instance in "$@"
 fi # if [ -z $1 ]; then
