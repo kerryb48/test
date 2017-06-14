@@ -331,7 +331,7 @@ echo "All cores and spines:"
 
 function next_int {
   namespace=$1
-  lastint=$(sudo ip -o -n $namespace link | grep "fpPanel" |awk '{print $2}'|awk -F "@" '{print $1}'|sort|tail -1|sed 's/fpPanel//')
+  lastint=$(sudo ip -o -n $namespace link | grep "fpPort" |awk '{print $2}'|awk -F "@" '{print $1}'|sort|tail -1|sed 's/fpPort//')
   let nextint=lastint+1
   echo $nextint
 }
